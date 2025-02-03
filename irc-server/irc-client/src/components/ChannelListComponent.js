@@ -6,7 +6,6 @@ const ChannelListComponent = ({ onSelectChannel }) => {
     const [newChannel, setNewChannel] = useState('');
 
     useEffect(() => {
-        // Récupère les channels disponibles
         socket.emit('get_channels');
         socket.on('channel_list', (channelList) => {
             setChannels(channelList);
@@ -15,11 +14,10 @@ const ChannelListComponent = ({ onSelectChannel }) => {
         return () => socket.off('channel_list');
     }, []);
 
-    // Créer un nouveau channel
     const handleCreateChannel = () => {
         if (newChannel.trim()) {
             socket.emit('create_channel', newChannel.trim());
-            setNewChannel(''); // Réinitialise l'input
+            setNewChannel(''); 
         }
     };
 

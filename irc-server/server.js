@@ -11,53 +11,61 @@ const io = new Server(server, {
     },
 });
 
-// Stockage des données
-let channels = ['General']; // Par défaut, un channel "General"
-let users = {}; // Map des utilisateurs connectés (clé: socket.id)
+
+let channels = ['General']; 
+let users = {}; 
 
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
-    // Enregistrer le pseudo de l'utilisateur
     socket.on('set_nickname', (nickname) => {
-        users[socket.id] = { nickname, channels: [] };
-        console.log(`${nickname} connected.`);
+        if (!users[socket.id]) users[socket.id] = { nickname: 'Anonymous', channels: [] };
+        users[socket.id].nickname = nickname;
+        console.log(`User ${socket.id} set nickname to ${nickname}`);
     });
+    
 
-    // Récupérer la liste des channels
     socket.on('get_channels', () => {
         socket.emit('channel_list', channels);
     });
 
-    // Créer un channel
     socket.on('create_channel', (channelName) => {
         if (!channels.includes(channelName)) {
-            channels.push(channelName); // Ajouter le channel à la liste
+            channels.push(channelName); 
             console.log(`Channel created: ${channelName}`);
-            io.emit('channel_list', channels); // Notifie tous les utilisateurs
+            io.emit('channel_list', channels); 
         } else {
             socket.emit('error_message', `Channel "${channelName}" already exists.`);
         }
     });
 
-    // Rejoindre un channel
     socket.on('join_channel', ({ channelName, nickname }) => {
-        if (channels.includes(channelName)) {
-            socket.join(channelName);
-            users[socket.id].channels.push(channelName);
-            io.to(channelName).emit('message', `${nickname} joined ${channelName}.`);
-            console.log(`${nickname} joined channel: ${channelName}`);
-        } else {
-            socket.emit('error_message', `Channel "${channelName}" does not exist.`);
+        if (!users[socket.id]) {
+            users[socket.id] = { nickname: nickname || 'Anonymous', channels: [] };
         }
+    
+        if (!channels.includes(channelName)) {
+            socket.emit('error_message', `Channel "${channelName}" does not exist.`);
+            return;
+        }
+    
+        users[socket.id].channels.push(channelName);
+        socket.join(channelName);
+        console.log(`${nickname} joined ${channelName}`);
+    
+        io.to(channelName).emit('message', `${nickname} joined the channel.`);
     });
+    
 
-    // Envoi d’un message dans un channel
     socket.on('send_message', ({ channelName, message, nickname }) => {
+        if (!channelName || !message || !nickname) {
+            return;
+        }
+    
         io.to(channelName).emit('message', `${nickname}: ${message}`);
     });
+    
 
-    // Déconnexion
     socket.on('disconnect', () => {
         const user = users[socket.id];
         if (user) {
